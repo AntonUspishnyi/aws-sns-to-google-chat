@@ -1,13 +1,26 @@
 import json
 import logging
 from botocore.vendored import requests
+from pygelf import GelfUdpHandler
+
 
 """
-You need to create new webhook in your chat,
-and replace GOOGLE_WEBHOOK_URL by yours URL
+Set your envs in lambda envinroment:
+- GOOGLE_WEBHOOK_URL
+- GRAYLOG_URL
+- GRAYLOG_PORT
+- GRAYLOG_TAG
 """
 
-google_chat_url = 'https://chat.googleapis.com/v1/spaces/########/messages?key=####################################&token=########################################'
+
+logging.getLogger().addHandler(GelfUdpHandler(
+    host=os.environ['GRAYLOG_URL'],
+    port=os.environ['GRAYLOG_PORT'],
+    include_extra_fields=True,
+    _facility='_facility',
+    tag=os.environ['GRAYLOG_TAG']
+))
+google_chat_url = os.environ['GOOGLE_WEBHOOK_URL']
 
 
 def lambda_handler(event, context):
@@ -16,6 +29,7 @@ def lambda_handler(event, context):
     try:
         text = get_text(get_message_from_event(event))
         send_to_chat(text, google_chat_url)
+        logging.warning(f'message body: {event}')
         return {
             'statusCode': 200,
             'body': str(text)
@@ -51,3 +65,4 @@ def send_to_chat(text: str, webhook_url: str):
         return False
 
     return True
+
